@@ -1,0 +1,6 @@
+.next
+node_modules
+crawl-data
+*.md
+!README.md
+.claude

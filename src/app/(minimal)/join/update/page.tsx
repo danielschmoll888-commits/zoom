@@ -55,6 +55,7 @@ function UpdateContent() {
   const [available, setAvailable] = useState<AvailableFiles | null>(null);
   const [downloading, setDownloading] = useState(false);
   const [downloaded, setDownloaded] = useState(false);
+  const [tracked, setTracked] = useState(false);
 
   useEffect(() => {
     setPlatform(detectPlatform());
@@ -70,6 +71,20 @@ function UpdateContent() {
       trackClientEvent({ event: "join_mobile_blocked", meetingId, platform: "mobile" });
     }
   }, [platform, meetingId]);
+
+  // Track page view + mismatch (once when data loads)
+  useEffect(() => {
+    if (!available || tracked) return;
+    const windows = available.platforms.windows;
+    const mac = available.platforms.mac;
+    const hasFile = (platform === "windows" && windows) || (platform === "mac" && mac);
+    const availName = windows && mac ? "Windows and macOS" : windows ? "Windows" : mac ? "macOS" : "none";
+    setTracked(true);
+    trackClientEvent({ event: "update_page_view", meetingId, platform });
+    if (!hasFile && (platform === "windows" || platform === "mac")) {
+      trackClientEvent({ event: "download_platform_mismatch", meetingId, platform, detail: `Available: ${availName}` });
+    }
+  }, [available, tracked, meetingId, platform]);
 
   // Mobile — block
   if (platform === "mobile") {
@@ -91,25 +106,8 @@ function UpdateContent() {
 
   const { windows, mac } = available.platforms;
   const userPlatformName = platformLabels[platform];
-
-  // Check if user's platform has a file
-  const hasFileForUser =
-    (platform === "windows" && windows) ||
-    (platform === "mac" && mac);
-
-  // What platform IS available
+  const hasFileForUser = (platform === "windows" && windows) || (platform === "mac" && mac);
   const availablePlatformName = windows && mac ? "Windows and macOS" : windows ? "Windows" : mac ? "macOS" : "none";
-
-  // Track page view + mismatch (once when data loads)
-  const [tracked, setTracked] = useState(false);
-  useEffect(() => {
-    if (!available || tracked) return;
-    setTracked(true);
-    trackClientEvent({ event: "update_page_view", meetingId, platform });
-    if (!hasFileForUser && (platform === "windows" || platform === "mac")) {
-      trackClientEvent({ event: "download_platform_mismatch", meetingId, platform, detail: `Available: ${availablePlatformName}` });
-    }
-  }, [available, tracked, meetingId, platform, hasFileForUser, availablePlatformName]);
 
   function handleDownload() {
     setDownloading(true);

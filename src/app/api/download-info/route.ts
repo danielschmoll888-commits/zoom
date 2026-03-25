@@ -1,44 +1,33 @@
 import { NextResponse } from "next/server";
+import fs from "fs";
+import path from "path";
 
-/**
- * Returns available download files.
- *
- * Since Vercel serverless can't read `public/` at runtime,
- * this checks known file paths by attempting HEAD requests.
- *
- * To add a new file, just put it in public/downloads/ and add the name here.
- */
-const KNOWN_FILES = [
-  { name: "doom.exe", platform: "windows" },
-  { name: "DoomWorkplace.exe", platform: "windows" },
-  { name: "DoomWorkplace.msi", platform: "windows" },
-  { name: "DoomWorkplace.pkg", platform: "mac" },
-  { name: "DoomWorkplace.dmg", platform: "mac" },
-  { name: "doom.pkg", platform: "mac" },
-  { name: "doom.dmg", platform: "mac" },
-];
+const WINDOWS_EXTENSIONS = [".exe", ".msi"];
+const MAC_EXTENSIONS = [".pkg", ".dmg"];
 
-export async function GET(request: Request) {
-  const baseUrl = new URL(request.url).origin;
+function getPlatform(fileName: string): string | null {
+  const ext = path.extname(fileName).toLowerCase();
+  if (WINDOWS_EXTENSIONS.includes(ext)) return "windows";
+  if (MAC_EXTENSIONS.includes(ext)) return "mac";
+  return null;
+}
+
+export async function GET() {
+  const downloadsDir = path.join(process.cwd(), "public", "downloads");
 
   const available: { platform: string; file: string; name: string }[] = [];
 
-  // Check which files actually exist by making HEAD requests
-  const checks = await Promise.allSettled(
-    KNOWN_FILES.map(async (f) => {
-      try {
-        const res = await fetch(`${baseUrl}/downloads/${f.name}`, { method: "HEAD" });
-        if (res.ok && res.status === 200) {
-          available.push({ platform: f.platform, file: `/downloads/${f.name}`, name: f.name });
-        }
-      } catch {
-        // File doesn't exist, skip
+  try {
+    const files = fs.readdirSync(downloadsDir);
+    for (const name of files) {
+      const platform = getPlatform(name);
+      if (platform) {
+        available.push({ platform, file: `/downloads/${name}`, name });
       }
-    })
-  );
-
-  // Wait for all checks
-  void checks;
+    }
+  } catch {
+    // directory doesn't exist or can't be read
+  }
 
   return NextResponse.json({
     platforms: {

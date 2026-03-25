@@ -105,9 +105,8 @@ function JoinContent() {
             </label>
             <input
               id="join-confno"
-              type="tel"
+              type="text"
               inputMode="numeric"
-              pattern="[0-9]*"
               value={formatMeetingId(meetingId)}
               onChange={(e) => {
                 const digits = e.target.value.replace(/[^0-9]/g, "").slice(0, 11);

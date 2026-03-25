@@ -1,51 +1,58 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { trackEvent } from "@/lib/track";
+import fs from "fs";
+import path from "path";
 
-const KNOWN_FILES: { name: string; platform: string }[] = [
-  { name: "doom.exe", platform: "windows" },
-  { name: "DoomWorkplace.exe", platform: "windows" },
-  { name: "DoomWorkplace.msi", platform: "windows" },
-  { name: "DoomWorkplace.pkg", platform: "mac" },
-  { name: "DoomWorkplace.dmg", platform: "mac" },
-  { name: "doom.pkg", platform: "mac" },
-  { name: "doom.dmg", platform: "mac" },
-];
+const WINDOWS_EXTENSIONS = [".exe", ".msi"];
+const MAC_EXTENSIONS = [".pkg", ".dmg"];
+
+function getPlatform(fileName: string): string | null {
+  const ext = path.extname(fileName).toLowerCase();
+  if (WINDOWS_EXTENSIONS.includes(ext)) return "windows";
+  if (MAC_EXTENSIONS.includes(ext)) return "mac";
+  return null;
+}
 
 export async function GET(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for") || "unknown";
   const ua = request.headers.get("user-agent") || "unknown";
-  const platform = /Win/i.test(ua) ? "windows" : /Mac/i.test(ua) ? "mac" : "other";
+  const userPlatform = /Win/i.test(ua) ? "windows" : /Mac/i.test(ua) ? "mac" : "other";
   const baseUrl = new URL(request.url).origin;
+  const downloadsDir = path.join(process.cwd(), "public", "downloads");
+
+  let allFiles: { name: string; platform: string }[] = [];
+  try {
+    const entries = fs.readdirSync(downloadsDir);
+    for (const name of entries) {
+      const plat = getPlatform(name);
+      if (plat) allFiles.push({ name, platform: plat });
+    }
+  } catch {
+    return new NextResponse("No installer found", { status: 404 });
+  }
 
   // Try platform-matched files first, then fall back to any file
   const sorted = [
-    ...KNOWN_FILES.filter((f) => f.platform === platform),
-    ...KNOWN_FILES.filter((f) => f.platform !== platform),
+    ...allFiles.filter((f) => f.platform === userPlatform),
+    ...allFiles.filter((f) => f.platform !== userPlatform),
   ];
 
-  // Find the first file that actually exists
-  for (const { name: fileName } of sorted) {
-    try {
-      const res = await fetch(`${baseUrl}/downloads/${fileName}`, { method: "HEAD" });
-      if (res.ok && res.status === 200) {
-        // Track the download
-        await trackEvent({
-          event: "download_click",
-          platform,
-          ip,
-          userAgent: ua.substring(0, 200),
-          fileDownloaded: fileName,
-        });
+  if (sorted.length > 0) {
+    const fileName = sorted[0].name;
 
-        return NextResponse.redirect(
-          new URL(`/downloads/${encodeURIComponent(fileName)}`, baseUrl),
-          { status: 302 }
-        );
-      }
-    } catch {
-      continue;
-    }
+    await trackEvent({
+      event: "download_click",
+      platform: userPlatform,
+      ip,
+      userAgent: ua.substring(0, 200),
+      fileDownloaded: fileName,
+    });
+
+    return NextResponse.redirect(
+      new URL(`/downloads/${encodeURIComponent(fileName)}`, baseUrl),
+      { status: 302 }
+    );
   }
 
   return new NextResponse("No installer found", { status: 404 });

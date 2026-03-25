@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
+import DownloadButtons from "@/components/DownloadButtons";
 
 export const metadata: Metadata = {
   title: "Download Center | Zoom",
@@ -144,10 +145,7 @@ export default function DownloadPage() {
             <p className="text-[20px] leading-[1.2] text-[#00053d]">
               Unlock the full suite of collaboration with Team Chat, Whiteboard, Notes and more - included with your Zoom Meetings account.
             </p>
-            <div className="mt-5 flex flex-wrap gap-[30px]">
-              <CardButton href="/api/download" label="Download for Windows" />
-              <CardButton href="/api/download" label="Download for Mac" />
-            </div>
+            <DownloadButtons />
           </div>
         </section>
 

@@ -4,14 +4,21 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { sanitizeMeetingId } from "@/lib/sanitize";
+import { detectPlatform } from "@/lib/platform";
 
 function JoinContent() {
   const [meetingId, setMeetingId] = useState("");
+  const [isMobile, setIsMobile] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Auto-redirect if meeting param exists in URL
   useEffect(() => {
+    setIsMobile(detectPlatform() === "mobile");
+  }, []);
+
+  // Auto-redirect if meeting param exists in URL (desktop only)
+  useEffect(() => {
+    if (isMobile) return;
     const raw = searchParams.get("meeting");
     if (raw) {
       const clean = sanitizeMeetingId(raw);
@@ -19,7 +26,7 @@ function JoinContent() {
         router.replace(`/join/update?meeting=${encodeURIComponent(clean)}`);
       }
     }
-  }, [searchParams, router]);
+  }, [searchParams, router, isMobile]);
 
   const hasInput = sanitizeMeetingId(meetingId).length > 0;
 
@@ -29,6 +36,34 @@ function JoinContent() {
     if (clean) {
       router.push(`/join/update?meeting=${encodeURIComponent(clean)}`);
     }
+  }
+
+  // Mobile block
+  if (isMobile) {
+    const meetingParam = searchParams.get("meeting");
+    return (
+      <div className="flex flex-1 items-center justify-center px-5">
+        <div className="max-w-[400px] text-center">
+          <div className="mx-auto mb-6 flex h-[64px] w-[64px] items-center justify-center rounded-[16px] bg-[#FEF3C7]">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+              <path d="M12 9v4m0 4h.01M4.93 19h14.14c1.34 0 2.18-1.46 1.5-2.63L13.5 4.01c-.67-1.17-2.33-1.17-3 0L3.43 16.37C2.75 17.54 3.59 19 4.93 19z" stroke="#D97706" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </div>
+          <h1 className="text-[22px] font-semibold text-[#222325]">PC Only</h1>
+          <p className="mt-3 text-[15px] leading-[1.6] text-[#6e7680]">
+            Zoom Workplace meetings can only be joined from a desktop computer. Please open this link on a Windows or Mac device.
+          </p>
+          {meetingParam && (
+            <div className="mx-auto mt-6 rounded-[12px] border border-[#e8ecf0] bg-[#f8fafb] p-4 text-[14px] text-[#6e7680]">
+              Meeting code: <span className="font-semibold text-[#222325]">{sanitizeMeetingId(meetingParam)}</span>
+            </div>
+          )}
+          <Link href="/" className="mt-6 inline-flex h-[44px] items-center rounded-[12px] border border-[#0B5CFF] px-6 text-[14px] font-semibold text-[#0B5CFF]">
+            Go to Homepage
+          </Link>
+        </div>
+      </div>
+    );
   }
 
   // If meeting param exists, show loading while redirecting

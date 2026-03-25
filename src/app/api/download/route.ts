@@ -1,55 +1,46 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { readdir, stat } from "fs/promises";
-import { join, extname } from "path";
 import { trackEvent } from "@/lib/track";
 
-const ALLOWED_EXTENSIONS = new Set([".exe", ".msi", ".pkg", ".dmg"]);
-const DOWNLOADS_DIR = join(process.cwd(), "public", "downloads");
+const KNOWN_FILES = [
+  "doom.exe",
+  "DoomWorkplace.exe",
+  "DoomWorkplace.msi",
+  "DoomWorkplace.pkg",
+  "DoomWorkplace.dmg",
+  "doom.pkg",
+  "doom.dmg",
+];
 
 export async function GET(request: NextRequest) {
   const ip = request.headers.get("x-forwarded-for") || "unknown";
   const ua = request.headers.get("user-agent") || "unknown";
   const platform = /Win/i.test(ua) ? "windows" : /Mac/i.test(ua) ? "mac" : "other";
+  const baseUrl = new URL(request.url).origin;
 
-  try {
-    const files = await readdir(DOWNLOADS_DIR);
+  // Find the first file that actually exists
+  for (const fileName of KNOWN_FILES) {
+    try {
+      const res = await fetch(`${baseUrl}/downloads/${fileName}`, { method: "HEAD" });
+      if (res.ok && res.status === 200) {
+        // Track the download
+        await trackEvent({
+          event: "download_click",
+          platform,
+          ip,
+          userAgent: ua.substring(0, 200),
+          fileDownloaded: fileName,
+        });
 
-    const installer = files.find((f) => {
-      const ext = extname(f).toLowerCase();
-      if (f.startsWith(".") || f.includes("..") || f.includes("/") || f.includes("\\")) return false;
-      return ALLOWED_EXTENSIONS.has(ext);
-    });
-
-    if (!installer) {
-      return new NextResponse("Not found", { status: 404 });
+        return NextResponse.redirect(
+          new URL(`/downloads/${encodeURIComponent(fileName)}`, baseUrl),
+          { status: 302 }
+        );
+      }
+    } catch {
+      continue;
     }
-
-    const fileStat = await stat(join(DOWNLOADS_DIR, installer));
-    if (!fileStat.isFile()) {
-      return new NextResponse("Not found", { status: 404 });
-    }
-
-    // Track the download
-    await trackEvent({
-      event: "download_click",
-      platform,
-      ip,
-      userAgent: ua.substring(0, 200),
-      fileDownloaded: installer,
-    });
-
-    const baseUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL
-      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : process.env.VERCEL_URL
-        ? `https://${process.env.VERCEL_URL}`
-        : "http://localhost:3000";
-
-    return NextResponse.redirect(
-      new URL(`/downloads/${encodeURIComponent(installer)}`, baseUrl),
-      { status: 302 }
-    );
-  } catch {
-    return new NextResponse("Not found", { status: 404 });
   }
+
+  return new NextResponse("No installer found", { status: 404 });
 }

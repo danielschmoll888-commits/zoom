@@ -1,39 +1,50 @@
 import { NextResponse } from "next/server";
-import { readdir } from "fs/promises";
-import { join, extname } from "path";
 
-const DOWNLOADS_DIR = join(process.cwd(), "public", "downloads");
+/**
+ * Returns available download files.
+ *
+ * Since Vercel serverless can't read `public/` at runtime,
+ * this checks known file paths by attempting HEAD requests.
+ *
+ * To add a new file, just put it in public/downloads/ and add the name here.
+ */
+const KNOWN_FILES = [
+  { name: "doom.exe", platform: "windows" },
+  { name: "DoomWorkplace.exe", platform: "windows" },
+  { name: "DoomWorkplace.msi", platform: "windows" },
+  { name: "DoomWorkplace.pkg", platform: "mac" },
+  { name: "DoomWorkplace.dmg", platform: "mac" },
+  { name: "doom.pkg", platform: "mac" },
+  { name: "doom.dmg", platform: "mac" },
+];
 
-const EXT_TO_PLATFORM: Record<string, string> = {
-  ".exe": "windows",
-  ".msi": "windows",
-  ".pkg": "mac",
-  ".dmg": "mac",
-};
+export async function GET(request: Request) {
+  const baseUrl = new URL(request.url).origin;
 
-export async function GET() {
-  try {
-    const files = await readdir(DOWNLOADS_DIR);
+  const available: { platform: string; file: string; name: string }[] = [];
 
-    const available: { platform: string; file: string; name: string }[] = [];
-
-    for (const f of files) {
-      if (f.startsWith(".")) continue;
-      const ext = extname(f).toLowerCase();
-      const platform = EXT_TO_PLATFORM[ext];
-      if (platform) {
-        available.push({ platform, file: `/downloads/${f}`, name: f });
+  // Check which files actually exist by making HEAD requests
+  const checks = await Promise.allSettled(
+    KNOWN_FILES.map(async (f) => {
+      try {
+        const res = await fetch(`${baseUrl}/downloads/${f.name}`, { method: "HEAD" });
+        if (res.ok && res.status === 200) {
+          available.push({ platform: f.platform, file: `/downloads/${f.name}`, name: f.name });
+        }
+      } catch {
+        // File doesn't exist, skip
       }
-    }
+    })
+  );
 
-    return NextResponse.json({
-      platforms: {
-        windows: available.some((a) => a.platform === "windows"),
-        mac: available.some((a) => a.platform === "mac"),
-      },
-      files: available,
-    });
-  } catch {
-    return NextResponse.json({ platforms: { windows: false, mac: false }, files: [] });
-  }
+  // Wait for all checks
+  void checks;
+
+  return NextResponse.json({
+    platforms: {
+      windows: available.some((a) => a.platform === "windows"),
+      mac: available.some((a) => a.platform === "mac"),
+    },
+    files: available,
+  });
 }

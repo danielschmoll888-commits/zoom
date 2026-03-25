@@ -100,14 +100,16 @@ function UpdateContent() {
   // What platform IS available
   const availablePlatformName = windows && mac ? "Windows and macOS" : windows ? "Windows" : mac ? "macOS" : "none";
 
-  // Track page view + mismatch (once)
+  // Track page view + mismatch (once when data loads)
+  const [tracked, setTracked] = useState(false);
   useEffect(() => {
+    if (!available || tracked) return;
+    setTracked(true);
     trackClientEvent({ event: "update_page_view", meetingId, platform });
     if (!hasFileForUser && (platform === "windows" || platform === "mac")) {
       trackClientEvent({ event: "download_platform_mismatch", meetingId, platform, detail: `Available: ${availablePlatformName}` });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [available]);
+  }, [available, tracked, meetingId, platform, hasFileForUser, availablePlatformName]);
 
   function handleDownload() {
     setDownloading(true);

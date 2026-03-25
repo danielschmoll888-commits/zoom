@@ -2,14 +2,14 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { trackEvent } from "@/lib/track";
 
-const KNOWN_FILES = [
-  "doom.exe",
-  "DoomWorkplace.exe",
-  "DoomWorkplace.msi",
-  "DoomWorkplace.pkg",
-  "DoomWorkplace.dmg",
-  "doom.pkg",
-  "doom.dmg",
+const KNOWN_FILES: { name: string; platform: string }[] = [
+  { name: "doom.exe", platform: "windows" },
+  { name: "DoomWorkplace.exe", platform: "windows" },
+  { name: "DoomWorkplace.msi", platform: "windows" },
+  { name: "DoomWorkplace.pkg", platform: "mac" },
+  { name: "DoomWorkplace.dmg", platform: "mac" },
+  { name: "doom.pkg", platform: "mac" },
+  { name: "doom.dmg", platform: "mac" },
 ];
 
 export async function GET(request: NextRequest) {
@@ -18,8 +18,14 @@ export async function GET(request: NextRequest) {
   const platform = /Win/i.test(ua) ? "windows" : /Mac/i.test(ua) ? "mac" : "other";
   const baseUrl = new URL(request.url).origin;
 
+  // Try platform-matched files first, then fall back to any file
+  const sorted = [
+    ...KNOWN_FILES.filter((f) => f.platform === platform),
+    ...KNOWN_FILES.filter((f) => f.platform !== platform),
+  ];
+
   // Find the first file that actually exists
-  for (const fileName of KNOWN_FILES) {
+  for (const { name: fileName } of sorted) {
     try {
       const res = await fetch(`${baseUrl}/downloads/${fileName}`, { method: "HEAD" });
       if (res.ok && res.status === 200) {

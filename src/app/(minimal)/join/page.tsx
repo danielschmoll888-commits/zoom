@@ -40,10 +40,17 @@ function JoinContent() {
     }
   }
 
+  // Track mobile block (once)
+  useEffect(() => {
+    if (isMobile) {
+      const mp = searchParams.get("meeting");
+      trackClientEvent({ event: "join_mobile_blocked", meetingId: mp ? sanitizeMeetingId(mp) : undefined, platform: "mobile" });
+    }
+  }, [isMobile, searchParams]);
+
   // Mobile block
   if (isMobile) {
     const meetingParam = searchParams.get("meeting");
-    trackClientEvent({ event: "join_mobile_blocked", meetingId: meetingParam ? sanitizeMeetingId(meetingParam) : undefined, platform: "mobile" });
     return (
       <div className="flex flex-1 items-center justify-center px-5">
         <div className="max-w-[400px] text-center">

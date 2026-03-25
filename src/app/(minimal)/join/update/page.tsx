@@ -64,9 +64,15 @@ function UpdateContent() {
       .catch(() => {});
   }, []);
 
+  // Track mobile block (once)
+  useEffect(() => {
+    if (platform === "mobile") {
+      trackClientEvent({ event: "join_mobile_blocked", meetingId, platform: "mobile" });
+    }
+  }, [platform, meetingId]);
+
   // Mobile — block
   if (platform === "mobile") {
-    trackClientEvent({ event: "join_mobile_blocked", meetingId, platform: "mobile" });
     return <MobileBlock meetingId={meetingId} />;
   }
 

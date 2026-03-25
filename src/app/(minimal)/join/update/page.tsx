@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState } from "react";
 import { detectPlatform, platformLabels } from "@/lib/platform";
 import type { Platform } from "@/lib/platform";
 import { sanitizeMeetingId } from "@/lib/sanitize";
+import { trackClientEvent } from "@/lib/track-client";
 
 type AvailableFiles = {
   platforms: { windows: boolean; mac: boolean };
@@ -65,6 +66,7 @@ function UpdateContent() {
 
   // Mobile — block
   if (platform === "mobile") {
+    trackClientEvent({ event: "join_mobile_blocked", meetingId, platform: "mobile" });
     return <MobileBlock meetingId={meetingId} />;
   }
 
@@ -92,8 +94,18 @@ function UpdateContent() {
   // What platform IS available
   const availablePlatformName = windows && mac ? "Windows and macOS" : windows ? "Windows" : mac ? "macOS" : "none";
 
+  // Track page view + mismatch (once)
+  useEffect(() => {
+    trackClientEvent({ event: "update_page_view", meetingId, platform });
+    if (!hasFileForUser && (platform === "windows" || platform === "mac")) {
+      trackClientEvent({ event: "download_platform_mismatch", meetingId, platform, detail: `Available: ${availablePlatformName}` });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [available]);
+
   function handleDownload() {
     setDownloading(true);
+    trackClientEvent({ event: "download_click", meetingId, platform });
     setTimeout(() => {
       setDownloading(false);
       setDownloaded(true);

@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
-import { sanitizeMeetingId } from "@/lib/sanitize";
+import { sanitizeMeetingId, isValidMeetingId, formatMeetingId } from "@/lib/sanitize";
 import { detectPlatform } from "@/lib/platform";
+import { trackClientEvent } from "@/lib/track-client";
 
 function JoinContent() {
   const [meetingId, setMeetingId] = useState("");
@@ -28,19 +29,21 @@ function JoinContent() {
     }
   }, [searchParams, router, isMobile]);
 
-  const hasInput = sanitizeMeetingId(meetingId).length > 0;
+  const cleanId = sanitizeMeetingId(meetingId);
+  const valid = isValidMeetingId(meetingId);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const clean = sanitizeMeetingId(meetingId);
-    if (clean) {
-      router.push(`/join/update?meeting=${encodeURIComponent(clean)}`);
+    if (valid) {
+      trackClientEvent({ event: "join_attempt", meetingId: cleanId, platform: detectPlatform() });
+      router.push(`/join/update?meeting=${encodeURIComponent(cleanId)}`);
     }
   }
 
   // Mobile block
   if (isMobile) {
     const meetingParam = searchParams.get("meeting");
+    trackClientEvent({ event: "join_mobile_blocked", meetingId: meetingParam ? sanitizeMeetingId(meetingParam) : undefined, platform: "mobile" });
     return (
       <div className="flex flex-1 items-center justify-center px-5">
         <div className="max-w-[400px] text-center">
@@ -91,18 +94,26 @@ function JoinContent() {
         <form onSubmit={handleSubmit} className="mx-auto w-[360px] text-left">
           <div className="mb-4">
             <label htmlFor="join-confno" className="mb-[10px] block text-[14px] leading-[20px] text-[#2a2b2d]">
-              Meeting ID or Personal Link Name
+              Meeting ID
             </label>
             <input
               id="join-confno"
-              type="text"
+              type="tel"
+              inputMode="numeric"
+              pattern="[0-9]*"
               value={meetingId}
-              onChange={(e) => setMeetingId(e.target.value)}
-              placeholder="Enter Meeting ID or Personal Link Name"
+              onChange={(e) => setMeetingId(e.target.value.replace(/[^0-9]/g, ""))}
+              placeholder="Enter meeting number"
               autoComplete="off"
-              maxLength={40}
+              maxLength={11}
               className="h-[40px] w-full rounded-[12px] border border-[#c1c6ce] bg-white px-4 text-[15px] leading-[32px] text-[#232333] placeholder:text-[#909096] focus:border-[#0b5cff] focus:outline-none"
             />
+            {cleanId.length > 0 && (
+              <p className="mt-1.5 text-[13px] text-[#6e7680]">
+                {formatMeetingId(cleanId)}
+                {!valid && <span className="ml-2 text-[#C62828]">Must be at least 3 digits</span>}
+              </p>
+            )}
           </div>
 
           <div className="mb-4 text-[14px] leading-[20px] text-[#232333]">
@@ -119,9 +130,9 @@ function JoinContent() {
           <div className="mb-[72px]">
             <button
               type="submit"
-              disabled={!hasInput}
+              disabled={!valid}
               className={`h-[40px] w-full rounded-[12px] text-[16px] font-normal leading-[31px] transition-colors ${
-                hasInput
+                valid
                   ? "bg-[#0d6bde] text-white hover:bg-[#0b5cff]"
                   : "border border-white bg-[rgba(82,82,128,0.09)] text-[#909096]"
               }`}

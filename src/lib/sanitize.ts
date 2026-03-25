@@ -1,10 +1,27 @@
 /**
- * Sanitize a meeting ID — only allow alphanumeric, hyphens, and spaces.
- * Strips any HTML, script tags, or special characters that could be used for XSS.
+ * Sanitize a meeting ID — numbers only.
+ * Strips everything except digits. Max 11 digits.
  */
 export function sanitizeMeetingId(input: string): string {
-  // Strip anything that's not alphanumeric, hyphen, space, or period
-  return input.replace(/[^a-zA-Z0-9\-\s.]/g, "").trim().slice(0, 40);
+  return input.replace(/[^0-9]/g, "").slice(0, 11);
+}
+
+/**
+ * Validate meeting ID format — must be 3-11 digits
+ */
+export function isValidMeetingId(input: string): boolean {
+  const clean = sanitizeMeetingId(input);
+  return clean.length >= 3 && clean.length <= 11;
+}
+
+/**
+ * Format meeting ID with dashes for display (e.g., 123-456-7890)
+ */
+export function formatMeetingId(input: string): string {
+  const digits = sanitizeMeetingId(input);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
 }
 
 /**
@@ -12,8 +29,8 @@ export function sanitizeMeetingId(input: string): string {
  */
 export function sanitizeText(input: string, maxLength = 200): string {
   return input
-    .replace(/<[^>]*>/g, "")    // strip HTML tags
-    .replace(/[<>"'&]/g, "")    // strip dangerous chars
+    .replace(/<[^>]*>/g, "")
+    .replace(/[<>"'&]/g, "")
     .trim()
     .slice(0, maxLength);
 }

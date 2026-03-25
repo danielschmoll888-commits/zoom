@@ -12,6 +12,8 @@
     "@tailwindcss/postcss": "^4.2.2",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
+    "@upstash/ratelimit": "^2.0.8",
+    "@upstash/redis": "^1.37.0",
     "next": "^16.2.0",
     "playwright": "^1.58.2",
     "postcss": "^8.5.8",

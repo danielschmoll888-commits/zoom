@@ -224,10 +224,6 @@ function UpdateContent() {
         )}
       </div>
 
-      {/* Detected platform */}
-      <p className="mx-auto mt-4 w-[360px] text-left text-[12px] text-[#9CA3AF]">
-        Detected: {userPlatformName}
-      </p>
     </div>
   );
 }

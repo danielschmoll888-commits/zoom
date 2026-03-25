@@ -71,9 +71,6 @@ export default function DownloadButtons() {
             </p>
           </div>
         )}
-        <p className="text-[13px] text-[#6e7680]">
-          Detected: <span className="font-medium text-[#222325]">{platformLabels[platform]}</span>
-        </p>
       </div>
     );
   }
@@ -98,9 +95,6 @@ export default function DownloadButtons() {
             </p>
           </div>
         )}
-        <p className="text-[13px] text-[#6e7680]">
-          Detected: <span className="font-medium text-[#222325]">{platformLabels[platform]}</span>
-        </p>
       </div>
     );
   }

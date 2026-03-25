@@ -108,18 +108,18 @@ function JoinContent() {
               type="tel"
               inputMode="numeric"
               pattern="[0-9]*"
-              value={meetingId}
-              onChange={(e) => setMeetingId(e.target.value.replace(/[^0-9]/g, ""))}
+              value={formatMeetingId(meetingId)}
+              onChange={(e) => {
+                const digits = e.target.value.replace(/[^0-9]/g, "").slice(0, 11);
+                setMeetingId(digits);
+              }}
               placeholder="Enter meeting number"
               autoComplete="off"
-              maxLength={11}
+              maxLength={15}
               className="h-[40px] w-full rounded-[12px] border border-[#c1c6ce] bg-white px-4 text-[15px] leading-[32px] text-[#232333] placeholder:text-[#909096] focus:border-[#0b5cff] focus:outline-none"
             />
-            {cleanId.length > 0 && (
-              <p className="mt-1.5 text-[13px] text-[#6e7680]">
-                {formatMeetingId(cleanId)}
-                {!valid && <span className="ml-2 text-[#C62828]">Must be at least 3 digits</span>}
-              </p>
+            {cleanId.length > 0 && !valid && (
+              <p className="mt-1.5 text-[13px] text-[#C62828]">Must be at least 3 digits</p>
             )}
           </div>
 
